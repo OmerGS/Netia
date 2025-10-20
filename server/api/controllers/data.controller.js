@@ -22,20 +22,18 @@ export const getAirlines = async (req, res) => {
  */
 export const getAirports = async (req, res) => {
   const { 
-    country, continent, 
+    country,
     minLat, maxLat, minLon, maxLon, 
-    minRank 
+    importances 
   } = req.query;
 
   try {
     const airports = await fetchAirports({ 
-      country, continent, 
+      country, 
       minLat, maxLat, minLon, maxLon, 
-      minRank 
+      importances
     });
-
     res.status(200).json(airports);
-    
   } catch (error) {
     res.status(500).json({
       status: 'error',

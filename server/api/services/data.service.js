@@ -1,62 +1,46 @@
 import driver from '../../config/neo4j.driver.js';
 
-/**
- * Traduit le niveau d'importance qualitatif en un score PageRank minimum.
- * Basé sur l'analyse (Majeur >= 9.0, Régional >= 4.0).
- */
-const translateImportanceToRank = (importanceLevel) => {
-  const SCORE_MAJOR_HUB = 9.0; 
-  
-  const SCORE_REGIONAL_HUB = 4.0; 
-
-  switch (importanceLevel) {
-    case 'major':
-      return SCORE_MAJOR_HUB;
-    case 'regional':
-      return SCORE_REGIONAL_HUB;
-    case 'minor':
-    default:
-      return null;
-  }
-};
-
-
-// === SERVICE POUR LES AÉROPORTS ===
-
-export const getAirports = async ({ 
-  country, continent, 
-  minLat, maxLat, minLon, maxLon, 
-  importance 
+export const getAirports = async ({
+  country,
+  minLat, maxLat, minLon, maxLon,
+  importances
 }) => {
   const session = driver.session();
 
-  const minRank = translateImportanceToRank(importance);
+  const importanceList = importances ? (importances).split(',') : null;
 
   const params = {
     country: country || null,
-    continent: continent || null,
+    importanceList: importanceList,
     minLat: minLat ? parseFloat(minLat) : null,
     maxLat: maxLat ? parseFloat(maxLat) : null,
     minLon: minLon ? parseFloat(minLon) : null,
     maxLon: maxLon ? parseFloat(maxLon) : null,
-    minRank: minRank
   };
-  
+
   const query = `
     MATCH (a:Airport)
-    WHERE a.latitude IS NOT NULL AND a.longitude IS NOT NULL AND a.tz_db IS NOT NULL
-    WITH a, split(a.tz_db, '/')[0] AS extractedContinent
+    WHERE a.latitude IS NOT NULL AND a.longitude IS NOT NULL
+    
+    WITH a, 
+      CASE
+        WHEN a.pageRank >= 9.0 THEN 'major'
+        WHEN a.pageRank >= 4.0 THEN 'regional'
+        ELSE 'minor'
+      END AS importanceCategory
+      
     WHERE 
       ($minLat IS NULL OR a.latitude >= $minLat)
       AND ($maxLat IS NULL OR a.latitude <= $maxLat)
       AND ($minLon IS NULL OR a.longitude >= $minLon)
       AND ($maxLon IS NULL OR a.longitude <= $maxLon)
+      
       AND ($country IS NULL OR a.country = $country)
-      AND ($continent IS NULL OR extractedContinent = $continent)
-      AND ($minRank IS NULL OR a.pageRank >= $minRank) 
+      AND ($importanceList IS NULL OR importanceCategory IN $importanceList) 
+      
     RETURN 
       a.iata AS iata, a.name AS name, a.city AS city, a.country AS country,
-      extractedContinent AS continent, a.latitude AS latitude, a.longitude AS longitude,
+      a.latitude AS latitude, a.longitude AS longitude,
       a.pageRank AS pageRank
     ORDER BY pageRank DESC
   `;
@@ -69,20 +53,18 @@ export const getAirports = async ({
       name: record.get('name'),
       city: record.get('city'),
       country: record.get('country'),
-      continent: record.get('continent'),
       latitude: record.get('latitude'),
       longitude: record.get('longitude'),
       pageRank: record.get('pageRank')
     }));
 
   } catch (error) {
-    console.error('Erreur lors de la récupération des aéroports:', error);
-    throw new Error('Impossible de récupérer les aéroports depuis la base de données.');
+    console.error('Erreur loading airports:', error);
+    throw new Error('Could not fetch airports.');
   } finally {
     await session.close();
   }
 };
-
 
 // === SERVICE POUR LES COMPAGNIES AÉRIENNES ===
 
