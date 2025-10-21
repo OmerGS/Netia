@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Airport, AirportFilters, Airline, AirlineFilters } from './types';
+import type { Airport, AirportFilters, Airline, AirlineFilters, RouteDestination, Itinerary } from './types';
 
 const API_URL = 'http://localhost:4000/api/v1';
 
@@ -27,4 +27,17 @@ export const fetchAirports = (params: AirportFilters = {}) => {
  */
 export const fetchAirlines = (params: AirlineFilters = {}) => {
   return apiClient.get<Airline[]>('/data/airlines', { params });
+};
+
+/**
+ * Fetches direct destinations for a given airport IATA.
+ */
+export const fetchRoutesFromAirport = (iata: string) => {
+  return apiClient.get<RouteDestination[]>(`/routes/from/${iata}`);
+};
+
+export const searchItineraries = (dep: string, arr: string) => {
+    return apiClient.get<Itinerary[]>(`/flights/search`, { 
+        params: { dep, arr } 
+    });
 };

@@ -47,3 +47,30 @@ export interface AirlineFilters {
   country?: string;
   active?: boolean;
 }
+
+export interface RouteDestination {
+  iata: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface RouteNode {
+    iata: string;
+    lat: number;
+    lon: number;
+}
+
+/**
+ * Structure de données pour un itinéraire retourné par /flights/search
+ */
+export interface Itinerary {
+    departure: string; 
+    arrival: string;   
+    stops: number;     
+    route: string[];   
+    airlines: string[]; 
+    totalKm: number;
+    priceEUR: number;
+    routeCoordinates: RouteNode[]; 
+}

@@ -2,10 +2,10 @@
 
 import React from 'react';
 
-export default function Analytics() {
+export default function Airline() {
   return (
     <main>      
-      <p>Analytics</p>
+      <p>Airline</p>
     </main>
   );
 }
