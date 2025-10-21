@@ -41,3 +41,13 @@ export const searchItineraries = (dep: string, arr: string) => {
         params: { dep, arr } 
     });
 };
+
+/**
+ * Envoie une requête PUT pour mettre à jour le nom d'un aéroport.
+ * @param iataCode Le code IATA de l'aéroport à modifier.
+ * @param newName Le nouveau nom à attribuer.
+ * @returns Une promesse résolue si l'update a réussi.
+ */
+export const updateAirportName = (iataCode: string, newName: string) => {
+    return apiClient.put(`/data/airport/${iataCode}`, { name: newName });
+};

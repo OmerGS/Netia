@@ -3,15 +3,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fetchAirports, fetchRoutesFromAirport } from '@/lib/api.service';
+import { fetchAirports, fetchRoutesFromAirport, updateAirportName } from '@/lib/api.service';
 import type { Airport, AirportFilters, ImportanceLevel, RouteDestination } from '@/lib/types';
-import L, { LatLngTuple, LatLngBounds } from 'leaflet';
+import { LatLngTuple, LatLngBounds } from 'leaflet';
 import styles from '@/components/dashboard/Dashboard.module.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MapEvents } from '@/components/map/MapEvents';
 import { ActiveFiltersDisplay } from '@/components/ui/ActiveFilterDisplay';
 import { airportIcon } from '@/components/map/MapIcon';
-import { InfoOverlay } from '@/components/ui/InfoOverlay';
+import { AirportDetailCard } from './AirportDetailCard';
 
 const ALL_IMPORTANCES: { label: string, value: ImportanceLevel }[] = [
   { label: 'Majeurs (>= 9.0)', value: 'major' },
@@ -32,44 +32,53 @@ const AirportDashboard = () => {
   const [currentRoutes, setCurrentRoutes] = useState<RouteDestination[]>([]);
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [destinationAirportObjects, setDestinationAirportObjects] = useState<Airport[]>([]);
-
+  const [isEditing, setIsEditing] = useState(false);
 
   const loadAirportsData = useCallback(async (currentFilters: AirportFilters, bounds: LatLngBounds | null) => {
     setIsLoadingAirports(true);
     setShowWarning(false);
-
     if (!currentFilters.importances || currentFilters.importances.length === 0) {
-      setFilteredAirports([]);
-      setIsLoadingAirports(false);
-      return;
+      setFilteredAirports([]); setIsLoadingAirports(false); return;
     }
-    if (currentFilters.importances.includes('minor')) {
-      setShowWarning(true);
-    }
-
+    if (currentFilters.importances.includes('minor')) { setShowWarning(true); }
     const apiFilters: AirportFilters = {
       ...currentFilters,
-      minLat: bounds?.getSouth(),
-      maxLat: bounds?.getNorth(),
-      minLon: bounds?.getWest(),
-      maxLon: bounds?.getEast(),
+      minLat: bounds?.getSouth(), maxLat: bounds?.getNorth(),
+      minLon: bounds?.getWest(), maxLon: bounds?.getEast(),
     };
-
     try {
       const response = await fetchAirports(apiFilters);
       setFilteredAirports(response.data);
-    } catch (error) {
-      console.error('Error loading airports:', error);
-      setFilteredAirports([]);
-    } finally {
-      setIsLoadingAirports(false);
-    }
+    } catch (error) { console.error('Error loading airports:', error); setFilteredAirports([]); }
+    finally { setIsLoadingAirports(false); }
   }, []);
 
-  useEffect(() => {
-    if (currentBounds) {
-      loadAirportsData(filters, currentBounds);
+  const handleSaveAirportData = useCallback(async (data: Partial<Airport>) => {
+    if (!selectedAirport || !data.name) return;
+
+    setIsLoadingAirports(true);
+    
+    try {
+        const response = await updateAirportName(selectedAirport.iata, data.name);
+        
+        console.log('Mise à jour réussie:', response.data.message);
+        
+        setSelectedAirport(prev => prev ? { ...prev, name: data.name! } : null);
+        
+        if (currentBounds) {
+            await loadAirportsData(filters, currentBounds); 
+        }
+        
+    } catch (error) {
+        console.error('Échec de la sauvegarde API:', error);
+        alert('Échec de la sauvegarde des données (Vérifiez la console du serveur).');
+    } finally {
+        setIsLoadingAirports(false);
     }
+  }, [selectedAirport, filters, currentBounds, loadAirportsData]);
+
+  useEffect(() => {
+    if (currentBounds) { loadAirportsData(filters, currentBounds); }
   }, [filters, currentBounds, loadAirportsData]);
 
   useEffect(() => {
@@ -79,25 +88,20 @@ const AirportDashboard = () => {
         setDestinationAirportObjects([]);
         return;
       }
-
       setIsLoadingRoutes(true);
       try {
         const routesResponse = await fetchRoutesFromAirport(selectedAirport.iata);
         const destinations = routesResponse.data;
         setCurrentRoutes(destinations);
-
         const destinationIatas = destinations.map(d => d.iata);
         if (destinationIatas.length > 0) {
            const allTypesFilters: AirportFilters = { importances: ['major', 'regional', 'minor'] };
            const allAirportsResponse = await fetchAirports(allTypesFilters);
            const destObjects = allAirportsResponse.data.filter(ap => destinationIatas.includes(ap.iata));
-
-
-          setDestinationAirportObjects(destObjects);
+           setDestinationAirportObjects(destObjects);
         } else {
           setDestinationAirportObjects([]);
         }
-
       } catch (error) {
         console.error(`Error loading routes/destinations for ${selectedAirport.iata}:`, error);
         setCurrentRoutes([]);
@@ -106,7 +110,6 @@ const AirportDashboard = () => {
         setIsLoadingRoutes(false);
       }
     };
-
     loadRoutesAndDestinations();
   }, [selectedAirport]);
   
@@ -126,6 +129,9 @@ const AirportDashboard = () => {
   }, []);
 
   const handleMarkerClick = (airport: Airport) => {
+    if (isEditing) {
+        setIsEditing(false); 
+    }
     if (selectedAirport && selectedAirport.iata === airport.iata) {
       setSelectedAirport(null);
     } else {
@@ -162,11 +168,14 @@ const AirportDashboard = () => {
         <ActiveFiltersDisplay filters={filters} isLoading={isLoadingAirports} />
 
         {selectedAirport && (
-          <InfoOverlay
-            selectedAirport={selectedAirport}
-            destinations={currentRoutes}
-            isLoadingRoutes={isLoadingRoutes}
-          />
+            <AirportDetailCard
+                airport={selectedAirport}
+                destinations={currentRoutes}
+                isEditing={isEditing} 
+                onToggleEdit={() => setIsEditing(prev => !prev)}
+                onSave={handleSaveAirportData}
+                isLoadingRoutes={isLoadingRoutes}
+            />
         )}
 
         <MapContainer center={initialMapPosition} zoom={5} style={{ height: '100%', width: '100%' }}>
@@ -174,17 +183,14 @@ const AirportDashboard = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-
           <MapEvents onBoundsChange={handleBoundsChange} />
-
+          
           {airportsToDisplay.map((airport) => (
             <Marker
               key={airport.iata}
               position={[airport.latitude, airport.longitude]}
               icon={airportIcon}
-              eventHandlers={{
-                click: () => handleMarkerClick(airport),
-              }}
+              eventHandlers={{ click: () => handleMarkerClick(airport) }}
               opacity={selectedAirport && airport.iata !== selectedAirport.iata ? 0.6 : 1.0}
               zIndexOffset={selectedAirport && airport.iata === selectedAirport.iata ? 1000 : 0}
             >

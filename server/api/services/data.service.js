@@ -8,7 +8,6 @@ export const getAirports = async ({
   const session = driver.session();
 
   const importanceList = importances ? (importances).split(',') : null;
-
   const params = {
     country: country || null,
     importanceList: importanceList,
@@ -19,6 +18,7 @@ export const getAirports = async ({
   };
 
   const query = `
+    // REQUÊTE 1
     MATCH (a:Airport)
     WHERE a.latitude IS NOT NULL AND a.longitude IS NOT NULL
     
@@ -34,15 +34,21 @@ export const getAirports = async ({
       AND ($maxLat IS NULL OR a.latitude <= $maxLat)
       AND ($minLon IS NULL OR a.longitude >= $minLon)
       AND ($maxLon IS NULL OR a.longitude <= $maxLon)
-      
       AND ($country IS NULL OR a.country = $country)
-      AND ($importanceList IS NULL OR importanceCategory IN $importanceList) 
-      
+      AND ($importanceList IS NULL OR importanceCategory IN $importanceList)
+    
+    // REQUÊTE 2
+    WITH a, importanceCategory
     RETURN 
-      a.iata AS iata, a.name AS name, a.city AS city, a.country AS country,
-      a.latitude AS latitude, a.longitude AS longitude,
-      a.pageRank AS pageRank
-    ORDER BY pageRank DESC
+      a.iata AS iata,
+      a.name AS name,
+      a.city AS city,
+      a.country AS country,
+      a.latitude AS latitude,
+      a.longitude AS longitude,
+      a.pageRank AS pageRank,
+      a.betweenness AS betweenness
+    ORDER BY a.pageRank DESC
   `;
 
   try {
@@ -55,7 +61,8 @@ export const getAirports = async ({
       country: record.get('country'),
       latitude: record.get('latitude'),
       longitude: record.get('longitude'),
-      pageRank: record.get('pageRank')
+      pageRank: record.get('pageRank'),
+      betweenness: record.get('betweenness')
     }));
 
   } catch (error) {
@@ -66,7 +73,25 @@ export const getAirports = async ({
   }
 };
 
-// === SERVICE POUR LES COMPAGNIES AÉRIENNES ===
+export const updateAirportName = async (iataCode, newName) => {
+  const session = driver.session();
+  
+  const query = `
+    MATCH (a:Airport {iata: $iataCode})
+    SET a.name = $newName
+    RETURN a
+  `;
+
+  try {
+    const result = await session.run(query, { iataCode, newName });
+    return result.records.length > 0; 
+  } catch (error) {
+    console.error(`Erreur Cypher lors de la mise à jour de ${iataCode}:`, error);
+    throw new Error(`Échec de la mise à jour de l'aéroport.`);
+  } finally {
+    await session.close();
+  }
+};
 
 export const getAirlines = async ({ country, active }) => {
   const session = driver.session();

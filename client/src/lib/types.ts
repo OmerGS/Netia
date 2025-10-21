@@ -11,6 +11,7 @@ export interface Airport {
   latitude: number;
   longitude: number;
   pageRank?: number;
+  betweenness?: number;
 }
 
 export type ImportanceLevel = 'major' | 'regional' | 'minor';
