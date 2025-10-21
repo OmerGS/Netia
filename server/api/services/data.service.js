@@ -139,3 +139,35 @@ export const getAirlines = async ({ country, active }) => {
     await session.close();
   }
 };
+
+export const createAirport = async (data) => {
+  const session = driver.session();
+  
+  const query = `
+    CREATE (a:Airport {
+      iata: $iata,
+      name: $name,
+      city: $city,
+      country: $country,
+      latitude: $latitude,
+      longitude: $longitude,
+      pageRank: 1.0,
+      betweenness: 0.0,
+      degree: 0
+    })
+    RETURN a
+  `;
+
+  try {
+    const result = await session.run(query, data);
+    return result.records.length > 0;
+  } catch (error) {
+    console.error('Erreur Cypher lors de la création de l\'aéroport:', error);
+    if (error.code === 'Neo.ClientError.Schema.ConstraintValidationFailed') {
+        throw new Error("L'IATA existe déjà.");
+    }
+    throw new Error('Échec de la création de l\'aéroport.');
+  } finally {
+    await session.close();
+  }
+};

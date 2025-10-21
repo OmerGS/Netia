@@ -40,7 +40,6 @@ export const findItineraries = async (depIata, arrIata) => {
     
     WITH p, destPageRank, pathNodes, segment, startNode(segment) AS a, endNode(segment) AS b
     
-    // Calcul de la distance géodésique (Great-Circle)
     WITH p, destPageRank, pathNodes, segment, 
          round(point.distance(
             point({latitude: a.latitude, longitude: a.longitude}), 

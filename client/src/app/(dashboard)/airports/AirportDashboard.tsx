@@ -5,13 +5,14 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css';
 import { fetchAirports, fetchRoutesFromAirport, updateAirportName } from '@/lib/api.service';
 import type { Airport, AirportFilters, ImportanceLevel, RouteDestination } from '@/lib/types';
-import { LatLngTuple, LatLngBounds } from 'leaflet';
+import L, { LatLngTuple, LatLngBounds, LatLng } from 'leaflet';
 import styles from '@/components/dashboard/Dashboard.module.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MapEvents } from '@/components/map/MapEvents';
 import { ActiveFiltersDisplay } from '@/components/ui/ActiveFilterDisplay';
 import { airportIcon } from '@/components/map/MapIcon';
 import { AirportDetailCard } from './AirportDetailCard';
+import { CreateAirportForm, CreateAirportMapHandler } from './CreateAirportTool'; 
 
 const ALL_IMPORTANCES: { label: string, value: ImportanceLevel }[] = [
   { label: 'Majeurs (>= 9.0)', value: 'major' },
@@ -33,6 +34,8 @@ const AirportDashboard = () => {
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [destinationAirportObjects, setDestinationAirportObjects] = useState<Airport[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCreationMode, setIsCreationMode] = useState(false);
+  const [newAirportCoords, setNewAirportCoords] = useState<LatLng | null>(null); 
 
   const loadAirportsData = useCallback(async (currentFilters: AirportFilters, bounds: LatLngBounds | null) => {
     setIsLoadingAirports(true);
@@ -55,20 +58,11 @@ const AirportDashboard = () => {
 
   const handleSaveAirportData = useCallback(async (data: Partial<Airport>) => {
     if (!selectedAirport || !data.name) return;
-
     setIsLoadingAirports(true);
-    
     try {
-        const response = await updateAirportName(selectedAirport.iata, data.name);
-        
-        console.log('Mise à jour réussie:', response.data.message);
-        
+        await updateAirportName(selectedAirport.iata, data.name);
         setSelectedAirport(prev => prev ? { ...prev, name: data.name! } : null);
-        
-        if (currentBounds) {
-            await loadAirportsData(filters, currentBounds); 
-        }
-        
+        if (currentBounds) { await loadAirportsData(filters, currentBounds); }
     } catch (error) {
         console.error('Échec de la sauvegarde API:', error);
         alert('Échec de la sauvegarde des données (Vérifiez la console du serveur).');
@@ -77,6 +71,20 @@ const AirportDashboard = () => {
     }
   }, [selectedAirport, filters, currentBounds, loadAirportsData]);
 
+  const handleCreationSuccess = () => {
+      if (currentBounds) {
+          loadAirportsData(filters, currentBounds);
+      }
+      setIsCreationMode(false);
+      setNewAirportCoords(null);
+  };
+
+  const handleToggleCreationMode = () => {
+      setIsCreationMode(prev => !prev);
+      setSelectedAirport(null);
+      setNewAirportCoords(null);
+  };
+  
   useEffect(() => {
     if (currentBounds) { loadAirportsData(filters, currentBounds); }
   }, [filters, currentBounds, loadAirportsData]);
@@ -116,9 +124,7 @@ const AirportDashboard = () => {
   const handleImportanceToggle = (level: ImportanceLevel) => {
     setFilters(prev => {
       const current = prev.importances || [];
-      const newImportances = current.includes(level)
-        ? current.filter(l => l !== level)
-        : [...current, level];
+      const newImportances = current.includes(level) ? current.filter(l => l !== level) : [...current, level];
       setSelectedAirport(null);
       return { ...prev, importances: newImportances };
     });
@@ -129,9 +135,12 @@ const AirportDashboard = () => {
   }, []);
 
   const handleMarkerClick = (airport: Airport) => {
-    if (isEditing) {
+    if (isEditing || isCreationMode) { 
         setIsEditing(false); 
+        return; 
     }
+    
+    // Bascule la sélection
     if (selectedAirport && selectedAirport.iata === airport.iata) {
       setSelectedAirport(null);
     } else {
@@ -162,6 +171,8 @@ const AirportDashboard = () => {
         onImportanceToggle={handleImportanceToggle}
         showWarning={showWarning}
         importanceOptions={ALL_IMPORTANCES}
+        isCreationMode={isCreationMode}
+        onToggleCreationMode={handleToggleCreationMode} // Passé
       />
 
       <main className={styles.mainContent}>
@@ -177,14 +188,34 @@ const AirportDashboard = () => {
                 isLoadingRoutes={isLoadingRoutes}
             />
         )}
+        
+        {isCreationMode && (
+            <CreateAirportForm 
+                onCreationSuccess={handleCreationSuccess}
+                coords={newAirportCoords} 
+                setCoords={setNewAirportCoords} 
+                isActive={isCreationMode}
+            />
+        )}
 
+        {/* 4. La Carte */}
         <MapContainer center={initialMapPosition} zoom={5} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          <MapEvents onBoundsChange={handleBoundsChange} />
           
+          <MapEvents onBoundsChange={handleBoundsChange} />
+
+          {isCreationMode && (
+              <CreateAirportMapHandler 
+                  coords={newAirportCoords} 
+                  setCoords={setNewAirportCoords}
+                  isActive={isCreationMode}
+              />
+          )}
+
+          {/* Markers */}
           {airportsToDisplay.map((airport) => (
             <Marker
               key={airport.iata}
@@ -206,6 +237,7 @@ const AirportDashboard = () => {
             </Marker>
           ))}
 
+          {/* Polylines */}
           {selectedAirport && currentRoutes.map((dest, index) => (
             <Polyline
               key={`${selectedAirport.iata}-${dest.iata}`}

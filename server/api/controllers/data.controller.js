@@ -1,6 +1,7 @@
 import { getAirlines as fetchAirlines } from '../services/data.service.js';
 import { getAirports as fetchAirports } from '../services/data.service.js';
 import { updateAirportName as updateAirportService } from '../services/data.service.js';
+import { createAirport as createAirportService } from '../services/data.service.js';
 
 export const getAirlines = async (req, res) => {
   const { country, active } = req.query;
@@ -62,5 +63,33 @@ export const updateAirport = async (req, res) => {
     } catch (error) {
         console.error('Erreur API lors de la mise à jour de l\'aéroport:', error);
         res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+export const createAirport = async (req, res) => {
+    const data = req.body;
+
+    if (!data.iata || !data.name || !data.latitude || !data.longitude) {
+        return res.status(400).json({ status: 'error', message: 'IATA, Name, Latitude et Longitude sont requis.' });
+    }
+
+    try {
+        const success = await createAirportService({
+            iata: data.iata.toUpperCase(),
+            name: data.name.trim(),
+            city: data.city || 'Inconnue',
+            country: data.country || 'Inconnu',
+            latitude: data.latitude,
+            longitude: data.longitude
+        });
+
+        if (success) {
+            res.status(201).json({ status: 'success', message: `Aéroport ${data.iata} créé avec succès.` });
+        } else {
+            res.status(500).json({ status: 'error', message: 'Erreur inconnue lors de la création.' });
+        }
+    } catch (error) {
+        console.error('Erreur API lors de la création:', error);
+        res.status(409).json({ status: 'error', message: error.message });
     }
 };
