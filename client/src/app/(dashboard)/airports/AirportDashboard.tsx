@@ -3,11 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-// Imports des fonctions API et des Types
 import { deleteAirport, fetchAirports, fetchRoutesFromAirport, updateAirportName, createRoute } from '@/lib/api.service';
 import type { Airport, AirportFilters, ImportanceLevel, RouteDestination } from '@/lib/types';
 import L, { LatLngTuple, LatLngBounds, LatLng } from 'leaflet';
-// Imports des composants UI/Layout
 import styles from '@/components/dashboard/Dashboard.module.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MapEvents } from '@/components/map/MapEvents';
@@ -324,8 +322,7 @@ const AirportDashboard = () => {
               />
           )}
 
-          {/* Markers */}
-          {filteredAirports.map((airport) => {
+          {airportsToDisplay.map((airport) => {
 
             const isSelectedForDetail = selectedAirport && airport.iata === selectedAirport.iata;
             const isDestination = selectedAirport && destinationAirportObjects.some(dest => dest.iata === airport.iata);

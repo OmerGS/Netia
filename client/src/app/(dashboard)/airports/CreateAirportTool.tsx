@@ -7,7 +7,6 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:4000/api/v1';
 
-// --- Interfaces ---
 interface CreateAirportFormProps {
     onCreationSuccess: () => void;
     coords: LatLng | null;
@@ -21,14 +20,10 @@ interface CreateAirportMapHandlerProps {
     isActive: boolean;
 }
 
-// --- 1. Le Handler Leaflet (à importer DANS MapContainer) ---
-// C'est ce composant qui utilise useMapEvents et résout l'erreur de contexte.
 export const CreateAirportMapHandler: React.FC<CreateAirportMapHandlerProps> = ({ coords, setCoords, isActive }) => {
     
-    // Le hook est appelé ici, à l'intérieur de MapContainer
     useMapEvents({
         click: (e: L.LeafletMouseEvent) => {
-            // Capture le clic uniquement en mode actif et si les coordonnées n'ont pas été sélectionnées
             if (isActive && !coords) { 
                 setCoords(e.latlng);
             }
@@ -36,7 +31,6 @@ export const CreateAirportMapHandler: React.FC<CreateAirportMapHandlerProps> = (
     });
 
     if (coords) {
-        // Affiche un marqueur temporaire sur les coordonnées cliquées
         return (
             <Marker 
                 position={coords} 
@@ -46,10 +40,7 @@ export const CreateAirportMapHandler: React.FC<CreateAirportMapHandlerProps> = (
     }
     return null;
 };
-// ----------------------------------------------------------------------
 
-
-// --- 2. Le Formulaire Flottant (à importer EN DEHORS de MapContainer, dans <main>) ---
 export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, setCoords, onCreationSuccess, isActive }) => {
     
     const [formData, setFormData] = useState({ iata: '', name: '', city: '', country: '' });
@@ -63,7 +54,6 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         }
     }, [message]);
     
-    // Réinitialisation du formulaire lorsque le mode création est désactivé
     useEffect(() => {
         if (!isActive) {
             setCoords(null);
@@ -94,8 +84,8 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
             await axios.post(`${API_URL}/data/airport`, dataToSend);
             setMessage({ type: 'success', text: `Aéroport ${formData.iata} créé avec succès!` });
             
-            setCoords(null); // Efface le marqueur temporaire
-            onCreationSuccess(); // Signale au Dashboard de recharger la carte
+            setCoords(null);
+            onCreationSuccess();
         } catch (error: any) {
             const errorText = error.response?.data?.message || 'Erreur réseau/serveur.';
             setMessage({ type: 'error', text: `Création échouée: ${errorText}` });
@@ -104,7 +94,6 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         }
     };
     
-    // Styles pour le formulaire flottant
     const formStyle: React.CSSProperties = {
         backgroundColor: 'white',
         padding: '20px',
@@ -113,7 +102,7 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         width: '300px',
         position: 'absolute',
         top: 15,
-        left: 15, // Affichage en haut à gauche de la carte
+        left: 15,
         zIndex: 1000,
     };
     const buttonStyle: React.CSSProperties = {
@@ -131,11 +120,10 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         cursor: 'default',
         marginBottom: '15px',
         textAlign: 'center',
-        backgroundColor: coords ? '#10b981' : '#fca311', // Vert si coords, Orange sinon
+        backgroundColor: coords ? '#10b981' : '#fca311',
         color: 'white',
     };
 
-    // Rendu du Formulaire
     return (
         <form onSubmit={handleCreate} style={formStyle}>
             <h4 style={{ marginBottom: '10px', fontSize: '1.2rem', fontWeight: 'bold' }}>Créer un Nouvel Aéroport</h4>
