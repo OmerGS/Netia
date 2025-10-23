@@ -11,7 +11,7 @@ export const searchFlights = async (req, res) => {
   }
 
   try {
-    const itineraries = await findItineraries(dep.toUpperCase(), arr.toUpperCase());
+    const itineraries = await findItineraries(dep.toUpperCase(), arr.toUpperCase(), );
     res.status(200).json(itineraries);
   } catch (error) {
     console.error('Flight search error:', error);
