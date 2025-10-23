@@ -51,3 +51,7 @@ export const searchItineraries = (dep: string, arr: string) => {
 export const updateAirportName = (iataCode: string, newName: string) => {
     return apiClient.put(`/data/airport/${iataCode}`, { name: newName });
 };
+
+export const deleteAirport = (iataCode: string) => {
+  return apiClient.delete(`/data/airport/${iataCode}`);
+};

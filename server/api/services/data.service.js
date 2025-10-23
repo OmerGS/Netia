@@ -171,3 +171,24 @@ export const createAirport = async (data) => {
     await session.close();
   }
 };
+
+export const deleteAirport = async (iataCode) => {
+  const session = driver.session();
+  
+  const query = `
+    MATCH (a:Airport {iata: $iataCode})
+    DETACH DELETE a
+    RETURN count(a) AS deletedCount
+  `;
+
+  try {
+    const result = await session.run(query, { iataCode });
+    const deletedCount = result.records[0].get('deletedCount').low;
+    return deletedCount;
+  } catch (error) {
+    console.error(`Erreur Cypher lors de la suppression de ${iataCode}:`, error);
+    throw new Error(`Échec de la suppression de l'aéroport.`);
+  } finally {
+    await session.close();
+  }
+};

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fetchAirports, fetchRoutesFromAirport, updateAirportName } from '@/lib/api.service';
+import { deleteAirport, fetchAirports, fetchRoutesFromAirport, updateAirportName } from '@/lib/api.service';
 import type { Airport, AirportFilters, ImportanceLevel, RouteDestination } from '@/lib/types';
 import L, { LatLngTuple, LatLngBounds, LatLng } from 'leaflet';
 import styles from '@/components/dashboard/Dashboard.module.css';
@@ -84,6 +84,27 @@ const AirportDashboard = () => {
       setSelectedAirport(null);
       setNewAirportCoords(null);
   };
+
+  const handleDeleteAirportData = useCallback(async (iata: string) => {
+    if (!iata) return;
+    
+    setIsLoadingAirports(true);
+    setSelectedAirport(null); 
+    
+    try {
+        await deleteAirport(iata);
+        console.log(`Suppression réussie de l'aéroport ${iata}.`);
+        if (currentBounds) {
+            await loadAirportsData(filters, currentBounds);
+        }
+        
+    } catch (error: any) {
+        console.error('Échec de la suppression API:', error.response?.data?.message || error.message);
+        alert('Échec de la suppression des données (Vérifiez la console du serveur).');
+    } finally {
+        setIsLoadingAirports(false);
+    }
+  }, [filters, currentBounds, loadAirportsData, setIsLoadingAirports]);
   
   useEffect(() => {
     if (currentBounds) { loadAirportsData(filters, currentBounds); }
@@ -140,7 +161,6 @@ const AirportDashboard = () => {
         return; 
     }
     
-    // Bascule la sélection
     if (selectedAirport && selectedAirport.iata === airport.iata) {
       setSelectedAirport(null);
     } else {
@@ -185,6 +205,7 @@ const AirportDashboard = () => {
                 isEditing={isEditing} 
                 onToggleEdit={() => setIsEditing(prev => !prev)}
                 onSave={handleSaveAirportData}
+                onDelete={(iata) => handleDeleteAirportData(iata)}
                 isLoadingRoutes={isLoadingRoutes}
             />
         )}

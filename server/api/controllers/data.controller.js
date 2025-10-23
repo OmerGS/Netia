@@ -2,6 +2,7 @@ import { getAirlines as fetchAirlines } from '../services/data.service.js';
 import { getAirports as fetchAirports } from '../services/data.service.js';
 import { updateAirportName as updateAirportService } from '../services/data.service.js';
 import { createAirport as createAirportService } from '../services/data.service.js';
+import { deleteAirport as deleteAirportService } from '../services/data.service.js';
 
 export const getAirlines = async (req, res) => {
   const { country, active } = req.query;
@@ -91,5 +92,26 @@ export const createAirport = async (req, res) => {
     } catch (error) {
         console.error('Erreur API lors de la création:', error);
         res.status(409).json({ status: 'error', message: error.message });
+    }
+};
+
+export const deleteAirport = async (req, res) => {
+    const { iata } = req.params;
+
+    if (!iata) {
+        return res.status(400).json({ status: 'error', message: 'Le code IATA est requis.' });
+    }
+
+    try {
+        const deletedCount = await deleteAirportService(iata.toUpperCase());
+
+        if (deletedCount > 0) {
+            res.status(200).json({ status: 'success', message: `L'aéroport ${iata} et toutes ses routes ont été supprimés.` });
+        } else {
+            res.status(404).json({ status: 'error', message: `Aucun aéroport trouvé avec l'IATA ${iata} à supprimer.` });
+        }
+    } catch (error) {
+        console.error('Erreur API lors de la suppression de l\'aéroport:', error);
+        res.status(500).json({ status: 'error', message: error.message });
     }
 };

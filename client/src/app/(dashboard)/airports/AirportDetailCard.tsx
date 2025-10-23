@@ -8,7 +8,8 @@ interface AirportDetailCardProps {
     destinations: RouteDestination[];
     isEditing: boolean;
     onToggleEdit: () => void;
-    onSave: (data: Partial<Airport>) => void; 
+    onSave: (data: Partial<Airport>) => void;
+    onDelete: (iata: string) => void; 
     isLoadingRoutes: boolean;
 }
 
@@ -18,6 +19,7 @@ export const AirportDetailCard: React.FC<AirportDetailCardProps> = ({
     isEditing, 
     onToggleEdit, 
     onSave,
+    onDelete,
     isLoadingRoutes
 }) => {
     const [airportName, setAirportName] = useState(airport.name || '');
@@ -31,10 +33,19 @@ export const AirportDetailCard: React.FC<AirportDetailCardProps> = ({
             alert("Le nom de l'aéroport ne peut pas être vide.");
             return;
         }
-        
         onSave({ name: airportName.trim() });
-        
         onToggleEdit();
+    };
+
+    const handleDeleteClick = () => {
+        const confirmation = window.confirm(
+            `Êtes-vous sûr de vouloir supprimer l'aéroport ${airport.iata} (${airport.name}) ?\n` +
+            `ATTENTION : Ceci supprimera également toutes les routes (lignes) connectées à cet aéroport.`
+        );
+        
+        if (confirmation) {
+            onDelete(airport.iata);
+        }
     };
 
 
@@ -99,10 +110,23 @@ export const AirportDetailCard: React.FC<AirportDetailCardProps> = ({
         <div className="space-y-2">
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h3 className="text-xl font-bold text-gray-900">{airport.iata} - {airport.name}</h3>
-                <svg onClick={onToggleEdit} style={iconStyle} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9"/>
-                    <path d="M16.5 3.5l4 4L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
+                <div className="flex items-center space-x-2">
+                    <svg onClick={onToggleEdit} style={iconStyle} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5l4 4L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    
+                    <button 
+                        onClick={handleDeleteClick} 
+                        disabled={isLoadingRoutes}
+                        title="Supprimer l'aéroport et ses routes"
+                        className="p-0 border-none bg-transparent"
+                    >
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 hover:text-red-800 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div className="space-y-1 text-sm pt-2">
                 <p><strong>Statut:</strong> <span style={{color: (airport.pageRank ?? 0) >= 4.0 ? '#007bff' : '#6c757d'}}>{importanceLabel}</span></p>
