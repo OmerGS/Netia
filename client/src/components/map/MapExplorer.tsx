@@ -49,9 +49,7 @@ const MapExplorer = () => {
   const position: [number, number] = [48.85, 2.35];
 
   return (
-    // Le composant retourne les filtres ET la carte
     <div>
-      {/* 5. LE NOUVEAU MENU DE FILTRAGE */}
       <div style={{ padding: '10px', background: '#eee', borderBottom: '1px solid #ccc' }}>
         <strong>Filtres d'affichage :</strong>
         <button 

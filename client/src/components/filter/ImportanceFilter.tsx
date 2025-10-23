@@ -38,7 +38,7 @@ export const ImportanceFilter = ({
       </div>
       {showWarning && (
         <p className="mt-2 text-xs text-red-600">
-          Attention : Afficher les mineurs peut ralentir.
+          Attention : Afficher les aéroports mineurs peut ralentir la navigation sur la carte.
         </p>
       )}
     </section>

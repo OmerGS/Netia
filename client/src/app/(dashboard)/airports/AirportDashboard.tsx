@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { deleteAirport, fetchAirports, fetchRoutesFromAirport, updateAirportName } from '@/lib/api.service';
+// Imports des fonctions API et des Types
+import { deleteAirport, fetchAirports, fetchRoutesFromAirport, updateAirportName, createRoute } from '@/lib/api.service';
 import type { Airport, AirportFilters, ImportanceLevel, RouteDestination } from '@/lib/types';
 import L, { LatLngTuple, LatLngBounds, LatLng } from 'leaflet';
+// Imports des composants UI/Layout
 import styles from '@/components/dashboard/Dashboard.module.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MapEvents } from '@/components/map/MapEvents';
@@ -13,6 +15,7 @@ import { ActiveFiltersDisplay } from '@/components/ui/ActiveFilterDisplay';
 import { airportIcon } from '@/components/map/MapIcon';
 import { AirportDetailCard } from './AirportDetailCard';
 import { CreateAirportForm, CreateAirportMapHandler } from './CreateAirportTool'; 
+import { CreateRouteForm } from './CreateRouteTool'; 
 
 const ALL_IMPORTANCES: { label: string, value: ImportanceLevel }[] = [
   { label: 'Majeurs (>= 9.0)', value: 'major' },
@@ -29,13 +32,18 @@ const AirportDashboard = () => {
   });
   const [currentBounds, setCurrentBounds] = useState<LatLngBounds | null>(null);
   const [showWarning, setShowWarning] = useState(false);
+  
   const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null);
   const [currentRoutes, setCurrentRoutes] = useState<RouteDestination[]>([]);
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [destinationAirportObjects, setDestinationAirportObjects] = useState<Airport[]>([]);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [isCreationMode, setIsCreationMode] = useState(false);
-  const [newAirportCoords, setNewAirportCoords] = useState<LatLng | null>(null); 
+  const [newAirportCoords, setNewAirportCoords] = useState<LatLng | null>(null);
+  const [isRouteCreationMode, setIsRouteCreationMode] = useState(false);
+  const [airportA, setAirportA] = useState<Airport | null>(null);
+  const [airportB, setAirportB] = useState<Airport | null>(null);
 
   const loadAirportsData = useCallback(async (currentFilters: AirportFilters, bounds: LatLngBounds | null) => {
     setIsLoadingAirports(true);
@@ -63,60 +71,83 @@ const AirportDashboard = () => {
         await updateAirportName(selectedAirport.iata, data.name);
         setSelectedAirport(prev => prev ? { ...prev, name: data.name! } : null);
         if (currentBounds) { await loadAirportsData(filters, currentBounds); }
-    } catch (error) {
-        console.error('Échec de la sauvegarde API:', error);
-        alert('Échec de la sauvegarde des données (Vérifiez la console du serveur).');
-    } finally {
-        setIsLoadingAirports(false);
-    }
+    } catch (error) { console.error('Échec de la sauvegarde API:', error); alert('Échec de la sauvegarde des données (Vérifiez la console du serveur).'); }
+    finally { setIsLoadingAirports(false); }
   }, [selectedAirport, filters, currentBounds, loadAirportsData]);
 
+  const handleDeleteAirportData = useCallback(async (iata: string) => {
+    if (!iata) return;
+    setIsLoadingAirports(true);
+    setSelectedAirport(null); 
+    try {
+        await deleteAirport(iata);
+        console.log(`Suppression réussie de l'aéroport ${iata}.`);
+        if (currentBounds) { await loadAirportsData(filters, currentBounds); }
+    } catch (error) { console.error('Échec de la suppression API:', error); alert('Échec de la suppression des données (Vérifiez la console du serveur).'); }
+    finally { setIsLoadingAirports(false); }
+  }, [filters, currentBounds, loadAirportsData]);
+  
   const handleCreationSuccess = () => {
-      if (currentBounds) {
-          loadAirportsData(filters, currentBounds);
-      }
+      if (currentBounds) { loadAirportsData(filters, currentBounds); }
       setIsCreationMode(false);
       setNewAirportCoords(null);
   };
+
+  const handleRouteCreationSuccess = () => {
+      if (currentBounds) {
+          loadAirportsData(filters, currentBounds);
+      }
+      setIsRouteCreationMode(false);
+      setAirportA(null);
+      setAirportB(null);
+  };
+
+  const handleRouteCreation = useCallback(async (airlineIata: string, equipmentIATA: string) => {
+    if (!airportA || !airportB) return;
+    
+    setIsLoadingAirports(true);
+    try {
+        await createRoute(airportA.iata, airportB.iata, airlineIata, equipmentIATA);
+        alert(`Route de ${airportA.iata} à ${airportB.iata} créée.`);
+        
+        if (currentBounds) { await loadAirportsData(filters, currentBounds); }
+        setIsRouteCreationMode(false);
+        setAirportA(null);
+        setAirportB(null);
+    } catch (error) {
+        console.error('Échec de la création de route:', error);
+        alert('Échec de la création de route.');
+    } finally {
+        setIsLoadingAirports(false);
+    }
+  }, [airportA, airportB, loadAirportsData, filters, currentBounds]);
 
   const handleToggleCreationMode = () => {
       setIsCreationMode(prev => !prev);
       setSelectedAirport(null);
       setNewAirportCoords(null);
+      setIsRouteCreationMode(false); 
+  };
+  
+  const handleToggleRouteCreationMode = () => {
+      setIsRouteCreationMode(prev => !prev);
+      setAirportA(null);
+      setAirportB(null);
+      setSelectedAirport(null);
+      setIsEditing(false);
+      setIsCreationMode(false);
   };
 
-  const handleDeleteAirportData = useCallback(async (iata: string) => {
-    if (!iata) return;
-    
-    setIsLoadingAirports(true);
-    setSelectedAirport(null); 
-    
-    try {
-        await deleteAirport(iata);
-        console.log(`Suppression réussie de l'aéroport ${iata}.`);
-        if (currentBounds) {
-            await loadAirportsData(filters, currentBounds);
-        }
-        
-    } catch (error: any) {
-        console.error('Échec de la suppression API:', error.response?.data?.message || error.message);
-        alert('Échec de la suppression des données (Vérifiez la console du serveur).');
-    } finally {
-        setIsLoadingAirports(false);
-    }
-  }, [filters, currentBounds, loadAirportsData, setIsLoadingAirports]);
-  
+
   useEffect(() => {
-    if (currentBounds) { loadAirportsData(filters, currentBounds); }
-  }, [filters, currentBounds, loadAirportsData]);
+    if (currentBounds && !isCreationMode) { 
+        loadAirportsData(filters, currentBounds); 
+    }
+  }, [filters, currentBounds, loadAirportsData, isCreationMode]);
 
   useEffect(() => {
     const loadRoutesAndDestinations = async () => {
-      if (!selectedAirport) {
-        setCurrentRoutes([]);
-        setDestinationAirportObjects([]);
-        return;
-      }
+      if (!selectedAirport) { setCurrentRoutes([]); setDestinationAirportObjects([]); return; }
       setIsLoadingRoutes(true);
       try {
         const routesResponse = await fetchRoutesFromAirport(selectedAirport.iata);
@@ -128,32 +159,37 @@ const AirportDashboard = () => {
            const allAirportsResponse = await fetchAirports(allTypesFilters);
            const destObjects = allAirportsResponse.data.filter(ap => destinationIatas.includes(ap.iata));
            setDestinationAirportObjects(destObjects);
-        } else {
-          setDestinationAirportObjects([]);
-        }
-      } catch (error) {
-        console.error(`Error loading routes/destinations for ${selectedAirport.iata}:`, error);
-        setCurrentRoutes([]);
-        setDestinationAirportObjects([]);
-      } finally {
-        setIsLoadingRoutes(false);
-      }
+        } else { setDestinationAirportObjects([]); }
+      } catch (error) { console.error(`Error loading routes/destinations for ${selectedAirport.iata}:`, error); setCurrentRoutes([]); setDestinationAirportObjects([]); }
+      finally { setIsLoadingRoutes(false); }
     };
     loadRoutesAndDestinations();
   }, [selectedAirport]);
   
+  useEffect(() => {
+    if (selectedAirport && currentBounds) {
+        const airportLatLng = L.latLng(selectedAirport.latitude, selectedAirport.longitude);
+        if (!currentBounds.contains(airportLatLng)) {
+            setSelectedAirport(null); 
+            if (isEditing) { setIsEditing(false); }
+        }
+    }
+  }, [currentBounds, selectedAirport, isEditing]);
+
   const handleImportanceToggle = (level: ImportanceLevel) => {
     setFilters(prev => {
       const current = prev.importances || [];
       const newImportances = current.includes(level) ? current.filter(l => l !== level) : [...current, level];
       setSelectedAirport(null);
+      setIsRouteCreationMode(false);
       return { ...prev, importances: newImportances };
     });
   };
 
   const handleBoundsChange = useCallback((bounds: LatLngBounds) => {
+    if (isCreationMode) { return; } 
     setCurrentBounds(bounds);
-  }, []);
+  }, [isCreationMode]);
 
   const handleMarkerClick = (airport: Airport) => {
     if (isEditing || isCreationMode) { 
@@ -161,6 +197,24 @@ const AirportDashboard = () => {
         return; 
     }
     
+    if (isRouteCreationMode) {
+        if (!airportA) {
+            setAirportA(airport);
+        } else if (airportA.iata === airport.iata) {
+            setAirportA(null); 
+            setAirportB(null); 
+        } else if (!airportB && airport.iata !== airportA.iata) {
+            setAirportB(airport);
+        } else if (airportB && airportB.iata === airport.iata) {
+            setAirportB(null); 
+        } else {
+            setAirportA(airport); 
+            setAirportB(null);
+        }
+        setSelectedAirport(null); 
+        return; 
+    }
+
     if (selectedAirport && selectedAirport.iata === airport.iata) {
       setSelectedAirport(null);
     } else {
@@ -175,10 +229,9 @@ const AirportDashboard = () => {
       destinationAirportObjects.forEach(ap => airportsMap.set(ap.iata, ap));
       return Array.from(airportsMap.values());
     }
-    else {
-      return filteredAirports;
-    }
-  }, [selectedAirport, destinationAirportObjects, filteredAirports]);
+    return filteredAirports;
+    
+  }, [selectedAirport, destinationAirportObjects, filteredAirports, isRouteCreationMode, airportA, airportB]);
 
   const initialMapPosition: LatLngTuple = [48.85, 2.35];
 
@@ -192,7 +245,9 @@ const AirportDashboard = () => {
         showWarning={showWarning}
         importanceOptions={ALL_IMPORTANCES}
         isCreationMode={isCreationMode}
-        onToggleCreationMode={handleToggleCreationMode} // Passé
+        onToggleCreationMode={handleToggleCreationMode}
+        isRouteCreationMode={isRouteCreationMode} 
+        onToggleRouteCreationMode={handleToggleRouteCreationMode}
       />
 
       <main className={styles.mainContent}>
@@ -205,7 +260,7 @@ const AirportDashboard = () => {
                 isEditing={isEditing} 
                 onToggleEdit={() => setIsEditing(prev => !prev)}
                 onSave={handleSaveAirportData}
-                onDelete={(iata) => handleDeleteAirportData(iata)}
+                onDelete={handleDeleteAirportData}
                 isLoadingRoutes={isLoadingRoutes}
             />
         )}
@@ -219,7 +274,40 @@ const AirportDashboard = () => {
             />
         )}
 
-        {/* 4. La Carte */}
+        {isRouteCreationMode && airportA && airportB && (
+            <CreateRouteForm
+                airportA={airportA}
+                airportB={airportB}
+                onCancel={handleToggleRouteCreationMode}
+                onSuccess={handleRouteCreationSuccess}
+                onCreate={handleRouteCreation}
+                isActive={isRouteCreationMode}
+            />
+        )}
+        
+        {isRouteCreationMode && (!airportA || !airportB) && (
+        <div 
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 
+                       bg-white shadow-xl border border-blue-300 rounded-lg 
+                       py-3 px-5 text-gray-700 z-[2000] flex items-center space-x-4"
+        >
+            <p className="font-semibold text-base">
+              {airportA 
+                ? `Sélectionnez l'aéroport B (Destination) pour `
+                : `Sélectionnez l'aéroport A (Départ)`}
+              {airportA && <span className="font-bold text-blue-600 ml-1">{airportA.iata}</span>}
+            </p>
+            
+            <button 
+                onClick={handleToggleRouteCreationMode}
+                className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
+            >
+                Annuler
+            </button>
+        </div>
+    )}
+
+
         <MapContainer center={initialMapPosition} zoom={5} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -237,28 +325,47 @@ const AirportDashboard = () => {
           )}
 
           {/* Markers */}
-          {airportsToDisplay.map((airport) => (
-            <Marker
-              key={airport.iata}
-              position={[airport.latitude, airport.longitude]}
-              icon={airportIcon}
-              eventHandlers={{ click: () => handleMarkerClick(airport) }}
-              opacity={selectedAirport && airport.iata !== selectedAirport.iata ? 0.6 : 1.0}
-              zIndexOffset={selectedAirport && airport.iata === selectedAirport.iata ? 1000 : 0}
-            >
-              <Popup>
-                <b>{airport.iata} - {airport.name}</b><br />
-                Location: {airport.city}, {airport.country}<br />
-                Importance: {
-                  (airport.pageRank ?? 0) >= 9.0 ? 'Major Hub' :
-                  (airport.pageRank ?? 0) >= 4.0 ? 'Regional Hub' :
-                  'Minor Airport'
-                }
-              </Popup>
-            </Marker>
-          ))}
+          {filteredAirports.map((airport) => {
 
-          {/* Polylines */}
+            const isSelectedForDetail = selectedAirport && airport.iata === selectedAirport.iata;
+            const isDestination = selectedAirport && destinationAirportObjects.some(dest => dest.iata === airport.iata);
+            const isConnected = isSelectedForDetail || isDestination;
+            
+            const isSelectedForRoute = (airport.iata === airportA?.iata || airport.iata === airportB?.iata);
+
+            let opacity = 1.0;
+            let zIndex = 0;
+
+            if (isRouteCreationMode) {
+                opacity = isSelectedForRoute ? 1.0 : 0.6;
+                zIndex = isSelectedForRoute ? 1000 : 0;
+            } else if (selectedAirport) {
+                opacity = isConnected ? 1.0 : 0.2;
+                zIndex = isSelectedForDetail ? 1000 : 0;
+            }
+                        
+            return (
+              <Marker
+                key={airport.iata}
+                position={[airport.latitude, airport.longitude]}
+                icon={airportIcon}
+                eventHandlers={{ click: () => handleMarkerClick(airport) }}
+                opacity={opacity}
+                zIndexOffset={zIndex}
+              >
+                <Popup>
+                  <b>{airport.iata} - {airport.name}</b><br />
+                  Location: {airport.city}, {airport.country}<br />
+                  Importance: {
+                    (airport.pageRank ?? 0) >= 9.0 ? 'Major Hub' :
+                    (airport.pageRank ?? 0) >= 4.0 ? 'Regional Hub' :
+                    'Minor Airport'
+                  }
+              </Popup>
+              </Marker>
+            );
+          })}
+
           {selectedAirport && currentRoutes.map((dest, index) => (
             <Polyline
               key={`${selectedAirport.iata}-${dest.iata}`}
@@ -273,6 +380,16 @@ const AirportDashboard = () => {
               }}
             />
           ))}
+          
+          {isRouteCreationMode && airportA && airportB && (
+            <Polyline
+                positions={[
+                    [airportA.latitude, airportA.longitude],
+                    [airportB.latitude, airportB.longitude],
+                ]}
+                pathOptions={{ color: '#10b981', weight: 3, dashArray: '10, 10' }}
+            />
+          )}
 
         </MapContainer>
       </main>

@@ -3,6 +3,7 @@ import { getAirports as fetchAirports } from '../services/data.service.js';
 import { updateAirportName as updateAirportService } from '../services/data.service.js';
 import { createAirport as createAirportService } from '../services/data.service.js';
 import { deleteAirport as deleteAirportService } from '../services/data.service.js';
+import { createRoute as createRouteService } from '../services/data.service.js';
 
 export const getAirlines = async (req, res) => {
   const { country, active } = req.query;
@@ -112,6 +113,32 @@ export const deleteAirport = async (req, res) => {
         }
     } catch (error) {
         console.error('Erreur API lors de la suppression de l\'aéroport:', error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+export const createRoute = async (req, res) => {
+    const { iataA, iataB, airlineIata, equipmentIATA } = req.body;
+
+    if (!iataA || !iataB || !airlineIata || !equipmentIATA) {
+        return res.status(400).json({ status: 'error', message: 'iataA, iataB, pageRank, airlineIata, et equipmentIATA sont tous requis.' });
+    }
+
+    try {
+        const created = await createRouteService(
+            iataA.toUpperCase(), 
+            iataB.toUpperCase(), 
+            airlineIata.toUpperCase(),
+            equipmentIATA.toUpperCase(),
+        );
+
+        if (created) {
+            res.status(201).json({ status: 'success', message: `Route ${iataA} -> ${iataB} créée avec succès.` });
+        } else {
+            res.status(200).json({ status: 'success', message: `Route ${iataA} -> ${iataB} déjà existante.` });
+        }
+    } catch (error) {
+        console.error('Erreur API lors de la création de route:', error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 };

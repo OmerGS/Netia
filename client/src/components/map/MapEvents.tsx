@@ -1,7 +1,7 @@
 'use client';
 
 import { useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet'; // Import Leaflet library itself
+import L from 'leaflet';
 import { useEffect } from 'react';
 
 interface MapEventsProps {
@@ -9,7 +9,7 @@ interface MapEventsProps {
 }
 
 export const MapEvents = ({ onBoundsChange }: MapEventsProps) => {
-  const map = useMap(); // Get the map instance
+  const map = useMap();
 
   useMapEvents({
     moveend: () => {

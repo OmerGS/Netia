@@ -192,3 +192,31 @@ export const deleteAirport = async (iataCode) => {
     await session.close();
   }
 };
+
+export const createRoute = async (iataA, iataB, airlineIata, equipmentIATA, pageRank) => {
+  const session = driver.session();
+  
+  const query = `
+    MATCH (a:Airport {iata: $iataA})
+    MATCH (b:Airport {iata: $iataB})
+    
+    MERGE (a)-[r:FLIES_TO]->(b)
+    ON CREATE SET
+      r.airline_iata = $airlineIata,
+      r.stops = 0,
+      r.codeshare = 'N',
+      r.equipment_list = $equipmentIATA
+      
+    RETURN r
+  `;
+
+  try {
+    const result = await session.run(query, { iataA, iataB, pageRank, airlineIata, equipmentIATA });
+    return result.summary.counters.updates().relationshipsCreated > 0;
+  } catch (error) {
+    console.error(`Erreur Cypher lors de la création de la route ${iataA}->${iataB}:`, error);
+    throw new Error(`Échec de la création de la route.`);
+  } finally {
+    await session.close();
+  }
+};

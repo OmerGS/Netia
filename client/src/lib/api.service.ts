@@ -7,9 +7,6 @@ const apiClient = axios.create({
   baseURL: API_URL,
 });
 
-/**
- * Récupère les aéroports depuis l'API avec des filtres.
- */
 export const fetchAirports = (params: AirportFilters = {}) => {
   const apiParams: any = { ...params };
 
@@ -22,16 +19,10 @@ export const fetchAirports = (params: AirportFilters = {}) => {
   return apiClient.get<Airport[]>('/data/airports', { params: apiParams });
 };
 
-/**
- * Récupère les compagnies aériennes depuis l'API.
- */
 export const fetchAirlines = (params: AirlineFilters = {}) => {
   return apiClient.get<Airline[]>('/data/airlines', { params });
 };
 
-/**
- * Fetches direct destinations for a given airport IATA.
- */
 export const fetchRoutesFromAirport = (iata: string) => {
   return apiClient.get<RouteDestination[]>(`/routes/from/${iata}`);
 };
@@ -42,16 +33,24 @@ export const searchItineraries = (dep: string, arr: string) => {
     });
 };
 
-/**
- * Envoie une requête PUT pour mettre à jour le nom d'un aéroport.
- * @param iataCode Le code IATA de l'aéroport à modifier.
- * @param newName Le nouveau nom à attribuer.
- * @returns Une promesse résolue si l'update a réussi.
- */
 export const updateAirportName = (iataCode: string, newName: string) => {
     return apiClient.put(`/data/airport/${iataCode}`, { name: newName });
 };
 
 export const deleteAirport = (iataCode: string) => {
   return apiClient.delete(`/data/airport/${iataCode}`);
+};
+
+export const createRoute = (
+    iataA: string, 
+    iataB: string, 
+    airlineIata: string, 
+    equipmentIATA: string, 
+) => {
+    return apiClient.post('/data/route', {
+        iataA,
+        iataB,
+        airlineIata,
+        equipmentIATA,
+    });
 };
