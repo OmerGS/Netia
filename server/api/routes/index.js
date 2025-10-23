@@ -3,6 +3,8 @@ import { Router } from 'express';
 import dataRoutes from './data.routes.js';
 import routeRoutes from './route.routes.js';
 import flightRoutes from './flight.routes.js';
+import airlineRoutes from './airline.route.js';
+
 
 const router = Router();
 
@@ -16,5 +18,6 @@ router.get('/', (req, res) => {
 router.use('/v1/data', dataRoutes);
 router.use('/v1/routes', routeRoutes);
 router.use('/v1/flights', flightRoutes);
+router.use('/v1/airlines', airlineRoutes);
 
 export default router;

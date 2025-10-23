@@ -1,11 +1,12 @@
-"use client"
+'use client';
 
 import React from 'react';
+import AirlineDashboard from './Airline'; 
 
-export default function Airline() {
+export default function AirlinePage() {
   return (
     <main>      
-      <p>Airline</p>
+      <AirlineDashboard />
     </main>
   );
 }

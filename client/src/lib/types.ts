@@ -33,20 +33,24 @@ export interface AirportFilters {
  * telle que retournée par l'API (endpoint /data/airlines).
  */
 export interface Airline {
+  id: number;
   name: string;
   country: string;
   iata: string;
   icao: string;
   callsign: string;
-  active: boolean;
+  alias?: string; 
+  active: boolean; 
 }
 
 /**
  * Définit les filtres optionnels pour la requête des compagnies.
  */
 export interface AirlineFilters {
+  search?: string,
   country?: string;
   active?: boolean;
+  limit?: number;
 }
 
 export interface RouteDestination {
