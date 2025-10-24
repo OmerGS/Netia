@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Airport, RouteDestination } from '@/lib/types';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface AirportDetailCardProps {
     airport: Airport;
@@ -48,100 +49,126 @@ export const AirportDetailCard: React.FC<AirportDetailCardProps> = ({
         }
     };
 
+    const { importanceLabel, importanceColor } = useMemo(() => {
+        const pageRank = airport.pageRank ?? 0;
+        if (pageRank >= 9.0) {
+            return { importanceLabel: 'Major Hub', importanceColor: 'text-red-600' };
+        }
+        if (pageRank >= 4.0) {
+            return { importanceLabel: 'Regional Hub', importanceColor: 'text-blue-600' };
+        }
+        return { importanceLabel: 'Minor Airport', importanceColor: 'text-gray-600' };
+    }, [airport.pageRank]);
 
-    const importanceLabel = (airport.pageRank ?? 0) >= 9.0 ? 'Major Hub' :
-                              (airport.pageRank ?? 0) >= 4.0 ? 'Regional Hub' : 'Minor Airport';
-
-    const cardStyle: React.CSSProperties = {
-        position: 'absolute',
-        top: 15,
-        right: 15,
-        zIndex: 1000,
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-        width: '300px',
-        maxWidth: '90vw',
-        borderLeft: isEditing ? '4px solid #fca311' : '4px solid #007bff'
-    };
-    
-    const iconStyle: React.CSSProperties = {
-        cursor: 'pointer', 
-        marginLeft: '10px', 
-        transition: 'color 0.2s',
-        color: isEditing ? '#fca311' : '#6c757d',
-    };
 
     const RenderEditForm = () => (
-        <div className="space-y-3">
-            <h4 className="text-lg font-semibold text-gray-800">Modifier : {airport.iata}</h4>
+        <div className="space-y-4">
+            <h4 className="text-xl font-semibold text-gray-800 border-b pb-2">Modifier : {airport.iata}</h4>
             <div className="space-y-1">
-                <label htmlFor="name" className="text-sm block text-gray-600">Nom de l'aéroport</label>
+                <label htmlFor="name" className="text-sm block font-medium text-gray-700">Nom de l'aéroport</label>
                 <input 
                     id="name"
                     type="text" 
                     value={airportName}
                     onChange={(e) => setAirportName(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded" 
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm" 
+                    placeholder="Entrez le nom de l'aéroport"
                 />
             </div>
             
-            <div className="flex justify-end space-x-2 pt-3">
-                <button 
-                    onClick={handleLocalSave}
-                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                    disabled={isLoadingRoutes}
-                >
-                    Sauvegarder
-                </button>
+            <div className="flex justify-end space-x-3 pt-3">
                 <button 
                     onClick={onToggleEdit} 
-                    className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-150 ease-in-out disabled:opacity-50"
                     disabled={isLoadingRoutes}
                 >
                     Annuler
+                </button>
+                <button 
+                    onClick={handleLocalSave}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoadingRoutes}
+                >
+                    Sauvegarder
                 </button>
             </div>
         </div>
     );
 
     const RenderReadOnly = () => (
-        <div className="space-y-2">
-            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900">{airport.iata} - {airport.name}</h3>
-                <div className="flex items-center space-x-2">
-                    <svg onClick={onToggleEdit} style={iconStyle} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 20h9"/>
-                        <path d="M16.5 3.5l4 4L7 19l-4 1 1-4L16.5 3.5z"/>
-                    </svg>
+        <div className="space-y-3">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                <h3 className="text-2xl font-extrabold text-gray-900 truncate">
+                    {airport.iata} - {airport.name}
+                </h3>
+                <div className="flex items-center space-x-2 shrink-0">
+                    <button 
+                        onClick={onToggleEdit}
+                        className="p-1 text-gray-500 hover:text-blue-600 transition duration-150 ease-in-out rounded-full"
+                        title="Modifier l'aéroport"
+                        aria-label="Modifier l'aéroport"
+                        disabled={isLoadingRoutes}
+                    >
+                         <PencilIcon className="h-5 w-5" />
+                    </button>
                     
                     <button 
                         onClick={handleDeleteClick} 
                         disabled={isLoadingRoutes}
                         title="Supprimer l'aéroport et ses routes"
-                        className="p-0 border-none bg-transparent"
+                        className="p-1 text-red-600 hover:text-red-800 transition duration-150 ease-in-out rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Supprimer l'aéroport"
                     >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 hover:text-red-800 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                         <TrashIcon className="h-5 w-5" />
                     </button>
                 </div>
             </div>
-            <div className="space-y-1 text-sm pt-2">
-                <p><strong>Statut:</strong> <span style={{color: (airport.pageRank ?? 0) >= 4.0 ? '#007bff' : '#6c757d'}}>{importanceLabel}</span></p>
-                <p><strong>Ville:</strong> {airport.city}</p>
-                <p><strong>Pays:</strong> {airport.country}</p>
-                <p><strong>Lat/Lon:</strong> {airport.latitude?.toFixed(4)} / {airport.longitude?.toFixed(4)}</p>
-                <p><strong>Aéroports desservis:</strong> {destinations.length}</p>
-                <p><strong>Score PR:</strong> {airport.pageRank?.toFixed(4) ?? 'N/A'}</p>
-                <p><strong>Score BW:</strong> {airport.betweenness?.toFixed(4) ?? 'N/A'}</p>
+            <div className="space-y-2 text-sm text-gray-700">
+                <p>
+                    <strong className="font-semibold text-gray-900">Statut:</strong> 
+                    <span className={`ml-2 font-medium ${importanceColor}`}>{importanceLabel}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Ville:</strong> 
+                    <span className="ml-2">{airport.city}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Pays:</strong> 
+                    <span className="ml-2">{airport.country}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Lat/Lon:</strong> 
+                    <span className="ml-2">{airport.latitude?.toFixed(4)} / {airport.longitude?.toFixed(4)}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Aéroports desservis:</strong> 
+                    <span className="ml-2 font-bold text-lg text-blue-600">{destinations.length}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Score PR (PageRank):</strong> 
+                    <span className="ml-2 font-mono">{airport.pageRank?.toFixed(4) ?? 'N/A'}</span>
+                </p>
+                <p>
+                    <strong className="font-semibold text-gray-900">Score BW (Betweenness):</strong> 
+                    <span className="ml-2 font-mono">{airport.betweenness?.toFixed(4) ?? 'N/A'}</span>
+                </p>
             </div>
         </div>
     );
 
+    const cardClasses = `
+        absolute top-4 right-4 z-[600]
+        bg-white p-5 
+        rounded-xl 
+        shadow-2xl 
+        w-full max-w-sm 
+        transition-all duration-300
+        border-l-4 
+        ${isEditing ? 'border-yellow-500' : 'border-blue-600'}
+    `;
+
     return (
-        <div style={cardStyle}>
+        <div className={cardClasses}>
             {isEditing ? RenderEditForm() : RenderReadOnly()}
         </div>
     );

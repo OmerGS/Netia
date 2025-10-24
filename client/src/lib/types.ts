@@ -43,9 +43,6 @@ export interface Airline {
   active: boolean; 
 }
 
-/**
- * Définit les filtres optionnels pour la requête des compagnies.
- */
 export interface AirlineFilters {
   search?: string,
   country?: string;
@@ -66,9 +63,6 @@ export interface RouteNode {
     lon: number;
 }
 
-/**
- * Structure de données pour un itinéraire retourné par /flights/search
- */
 export interface Itinerary {
     departure: string; 
     arrival: string;   
@@ -78,4 +72,13 @@ export interface Itinerary {
     totalKm: number;
     priceEUR: number;
     routeCoordinates: RouteNode[]; 
+}
+
+export interface AirportCreationData {
+    iata: string;
+    name: string;
+    city: string;
+    country: string;
+    latitude: number;
+    longitude: number;
 }

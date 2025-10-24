@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMapEvents, Marker } from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:4000/api/v1';
+import { createAirport } from '@/lib/api.service';
 
 interface CreateAirportFormProps {
     onCreationSuccess: () => void;
@@ -31,10 +29,16 @@ export const CreateAirportMapHandler: React.FC<CreateAirportMapHandlerProps> = (
     });
 
     if (coords) {
+        const customIcon = L.divIcon({ 
+            html: '<div class="w-4 h-4 bg-orange-500 rounded-full border-2 border-white shadow-lg"></div>', 
+            iconSize: [16, 16],
+            className: ''
+        });
+
         return (
             <Marker 
                 position={coords} 
-                icon={L.divIcon({ html: '<div style="background:orange; width:15px; height:15px; border-radius:50%; border: 2px solid white;"></div>', iconSize: [15, 15] })} 
+                icon={customIcon} 
             />
         );
     }
@@ -81,9 +85,11 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         };
 
         try {
-            await axios.post(`${API_URL}/data/airport`, dataToSend);
+            await createAirport(dataToSend);
+            
             setMessage({ type: 'success', text: `Aéroport ${formData.iata} créé avec succès!` });
             
+            setFormData({ iata: '', name: '', city: '', country: '' });
             setCoords(null);
             onCreationSuccess();
         } catch (error: any) {
@@ -94,57 +100,85 @@ export const CreateAirportForm: React.FC<CreateAirportFormProps> = ({ coords, se
         }
     };
     
-    const formStyle: React.CSSProperties = {
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        width: '300px',
-        position: 'absolute',
-        top: 15,
-        left: 15,
-        zIndex: 1000,
-    };
-    const buttonStyle: React.CSSProperties = {
-        padding: '8px 12px', 
-        color: 'white',
-        borderRadius: '6px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s',
-    };
-    const indicatorStyle: React.CSSProperties = {
-        padding: '10px 15px', 
-        borderRadius: '6px',
-        fontWeight: 'bold',
-        cursor: 'default',
-        marginBottom: '15px',
-        textAlign: 'center',
-        backgroundColor: coords ? '#10b981' : '#fca311',
-        color: 'white',
-    };
+    const formClasses = `
+        bg-white p-5 rounded-xl shadow-2xl 
+        w-full max-w-sm 
+        absolute top-4 left-4 z-[600]
+        space-y-4
+    `;
 
+    const indicatorClasses = `
+        p-3 rounded-lg font-bold text-center text-white 
+        transition duration-300 ease-in-out
+        ${coords ? 'bg-green-600' : 'bg-yellow-500'}
+    `;
+
+    const inputClasses = "w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm";
+    
     return (
-        <form onSubmit={handleCreate} style={formStyle}>
-            <h4 style={{ marginBottom: '10px', fontSize: '1.2rem', fontWeight: 'bold' }}>Créer un Nouvel Aéroport</h4>
+        <form onSubmit={handleCreate} className={formClasses}>
+            <h4 className="text-xl font-bold text-gray-800 border-b pb-2">Créer un Nouvel Aéroport</h4>
             
-            <div style={indicatorStyle}>
+            <div className={indicatorClasses}>
                 {coords ? 
                     `Coordonnées Capturées (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` : 
                     `CLIQUEZ SUR LA CARTE pour placer l'aéroport`}
             </div>
             
-            <input type="text" name="iata" value={formData.iata} onChange={handleChange} placeholder="IATA (ex: XYZ)" required maxLength={3} style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ccc', textTransform: 'uppercase' }} />
-            <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Nom Complet" required style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ccc' }} />
-            <input type="text" name="city" value={formData.city} onChange={handleChange} placeholder="Ville" style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ccc' }} />
-            <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="Pays" style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ccc' }} />
+            <input 
+                type="text" 
+                name="iata" 
+                value={formData.iata} 
+                onChange={handleChange} 
+                placeholder="IATA (ex: XYZ)" 
+                required 
+                maxLength={3} 
+                className={`${inputClasses} uppercase`} 
+            />
+            <input 
+                type="text" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                placeholder="Nom Complet" 
+                required 
+                className={inputClasses} 
+            />
+            <input 
+                type="text" 
+                name="city" 
+                value={formData.city} 
+                onChange={handleChange} 
+                placeholder="Ville" 
+                className={inputClasses} 
+            />
+            <input 
+                type="text" 
+                name="country" 
+                value={formData.country} 
+                onChange={handleChange} 
+                placeholder="Pays" 
+                className={inputClasses} 
+            />
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px' }}>
-                <button type="submit" disabled={isLoading || !coords} style={{...buttonStyle, backgroundColor: '#10b981'}}>
+            <div className="flex justify-end pt-2">
+                <button 
+                    type="submit" 
+                    disabled={isLoading || !coords} 
+                    className={`
+                        px-4 py-2 text-sm font-bold text-white bg-green-600 rounded-md 
+                        hover:bg-green-700 transition duration-150 ease-in-out
+                        disabled:bg-gray-400 disabled:cursor-not-allowed
+                    `}
+                >
                     {isLoading ? 'Création...' : 'Créer l\'Aéroport'}
                 </button>
             </div>
-            {message && <p style={{ color: message.type === 'error' ? 'red' : 'green', marginTop: '10px', fontWeight: 'bold' }}>{message.text}</p>}
+            {message && (
+                <p className={`mt-3 font-semibold text-center ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                    {message.text}
+                </p>
+            )}
         </form>
     );
 };

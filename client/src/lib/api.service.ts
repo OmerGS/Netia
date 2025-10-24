@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Airport, AirportFilters, Airline, AirlineFilters, RouteDestination, Itinerary } from './types';
+import type { Airport, AirportFilters, Airline, RouteDestination, Itinerary, AirportCreationData } from './types';
 
 const API_URL = 'http://localhost:4000/api/v1';
 
@@ -60,37 +60,27 @@ export const fetchAirlines = (skip: number, limit: number, country?: string, act
     params: { country, active, limit, skip } 
   });
 };
-/**
- * Met à jour les détails d'une compagnie (Nom, Pays, Active). (CRUD: U)
- */
+
+export const createAirport = (data: AirportCreationData) => {
+    return apiClient.post('/data/airport', data);
+};
+
 export const updateAirline = (id: number, data: Partial<Airline>) => {
   return apiClient.put(`/airlines/${id}`, data);
 };
 
-/**
- * Supprime une compagnie par ID. (CRUD: D)
- */
 export const deleteAirline = (id: number) => {
   return apiClient.delete(`/airlines/${id}`);
 };
 
-/**
- * Analyse 1: Obtient le nombre total de destinations et de pays desservis.
- */
 export const fetchAirlineCoverage = (id: number) => {
     return apiClient.get<any>(`/airlines/${id}/coverage`);
 };
 
-/**
- * Analyse 2: Obtient les hubs principaux de la compagnie (Top 5).
- */
 export const fetchAirlineTopHubs = (id: number, limit: number = 5) => {
     return apiClient.get<any[]>(`/airlines/${id}/hubs`, { params: { limit } });
 };
 
-/**
- * Analyse 3: Obtient la diversité de la flotte utilisée.
- */
 export const fetchAirlineFleetDiversity = (id: number) => {
     return apiClient.get<any>(`/airlines/${id}/fleet`);
 };
