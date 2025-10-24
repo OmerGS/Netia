@@ -25,13 +25,6 @@ export const Navbar = () => {
                     <NavLink href="/airports" label="Explorateur" currentPath={pathname} />
                     <NavLink href="/pathfinder" label="Les trajets" currentPath={pathname} />
                     <NavLink href="/airline" label="Compagnie aérienne" currentPath={pathname} /> 
-                    <NavLink href="/analytics" label="Rapport" currentPath={pathname} /> 
-                </div>
-
-                <div className="flex items-center space-x-3">
-                    <button className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md">
-                        Documentation
-                    </button>
                 </div>
             </div>
         </nav>
